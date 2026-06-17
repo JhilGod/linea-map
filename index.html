@@ -2,23 +2,66 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Linea Map | Arica en Movimiento</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Linea Map - Taxis Colectivos Arica</title>
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="mapa.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="mapa.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
     <div id="login-screen">
         <div class="login-card">
-            <img src="logo.jpg" alt="Logo Linea Map" class="logo-img">
-            <h1>Linea Map</h1>
-            <p>Conecta con tu ciudad. Rutas, paraderos y puntos de reciclaje en Arica.</p>
-            <button onclick="entrar()" class="btn-primary">Entrar a la Ciudad</button>
+            <img src="WhatsApp Image 2026-06-16 at 23.32.32.jpeg" alt="Logo Linea Map" class="logo-img">
+            <h2 class="brand-title">Linea Map</h2>
+            <p>Encuentra tu taxi colectivo rápidamente.</p>
+            <button onclick="entrarInvitado()" class="btn-invitado">Entrar a la Ciudad</button>
         </div>
     </div>
 
+    <div id="top-ui">
+        <div id="search-box">
+            <input type="text" id="dest-input" placeholder="¿A dónde vas?">
+            <button id="btn-search" onclick="buscarDestino()">Ir</button>
+        </div>
+        <div class="quick-actions">
+            <button class="pill" onclick="buscarRapido('Centro Arica')">🏙️ Centro</button>
+            <button class="pill" onclick="buscarRapido('Universidad de Tarapacá, Arica')">🎓 Campus UTA</button>
+            <button class="pill" onclick="buscarRapido('Hospital Juan Noé, Arica')">🏥 Hospital</button>
+            <button class="pill" onclick="buscarRapido('Agro Arica')">🛒 Agro</button>
+        </div>
+    </div>
+
+    <button id="btn-theme" onclick="toggleTheme()" title="Cambiar tema">🌙</button>
+
     <div id="map"></div>
+
+    <button onclick="centrarEnUsuario()" class="btn-locate" title="Mi ubicación">🎯</button>
+
+    <div id="bottom-sheet">
+        <div class="sheet-handle"></div>
+        <h3 id="sheet-title">Título</h3>
+        <div id="sheet-content">Contenido aquí...</div>
+        <button class="btn-close-sheet" onclick="cerrarSheet()">Cerrar Panel</button>
+    </div>
+
+    <nav id="bottom-nav">
+        <div class="nav-item active" onclick="cerrarSheet()">
+            <span class="nav-icon">🗺️</span>
+            <span>Explorar</span>
+        </div>
+        <div class="nav-item" onclick="mostrarLineasEnSheet()">
+            <span class="nav-icon">🚕</span>
+            <span>Líneas</span>
+        </div>
+        <div class="nav-item">
+            <span class="nav-icon">⚙️</span>
+            <span>Ajustes</span>
+        </div>
+    </nav>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="mapa.js"></script>
