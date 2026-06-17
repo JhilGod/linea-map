@@ -4,9 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Linea Map - Taxis Colectivos</title>
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="mapa.css">
+    
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 </head>
@@ -21,8 +23,11 @@
     </div>
 
     <button id="btn-menu" onclick="toggleSidePanel()" style="display: none;">☰ Rutas</button>
+
     <button id="btn-theme" onclick="toggleTheme()" title="Cambiar tema">🌙</button>
+
     <div id="map"></div>
+
     <button onclick="centrarEnUsuario()" class="btn-locate" title="Mi ubicación">🎯</button>
 
     <div id="side-panel">
@@ -36,6 +41,7 @@
 
         <div class="panel-body">
             <div id="tab-destinos" class="tab-content active">
+                
                 <div class="search-container">
                     <div class="panel-search-box">
                         <input type="text" id="panel-search-input" placeholder="Buscar dirección o lugar..." autocomplete="off" oninput="manejarInputBusqueda()">
@@ -46,19 +52,32 @@
 
                 <h3 class="panel-title">DESTINOS FRECUENTES</h3>
                 <ul class="stop-list">
-                    <li onclick="irADestino(-18.4891, -70.3124, 'Universidad de Tarapacá')"><span class="stop-name">UTA</span><span class="dot dot-red"></span></li>
-                    <li onclick="irADestino(-18.4795, -70.3115, 'Santo Tomás')"><span class="stop-name">SANTO TOMÁS</span><span class="dot dot-magenta"></span></li>
-                    <li onclick="irADestino(-18.4782, -70.3108, 'Hospital Juan Noé')"><span class="stop-name">HOSPITAL</span><span class="dot dot-blue"></span></li>
-                    <li onclick="irADestino(-18.4791, -70.3164, 'Paseo 21 de Mayo')"><span class="stop-name">21 DE MAYO</span><span class="dot dot-orange"></span></li>
-                    <li onclick="irADestino(-18.4755, -70.3142, 'Calle Maipú')"><span class="stop-name">CALLE MAIPÚ</span><span class="dot dot-green"></span></li>
+                    <li onclick="irADestino(-18.4891, -70.3124, 'Universidad de Tarapacá')">
+                        <span class="stop-name">UTA</span><span class="dot dot-red"></span>
+                    </li>
+                    <li onclick="irADestino(-18.4795, -70.3115, 'Santo Tomás')">
+                        <span class="stop-name">SANTO TOMÁS</span><span class="dot dot-magenta"></span>
+                    </li>
+                    <li onclick="irADestino(-18.4782, -70.3108, 'Hospital Juan Noé')">
+                        <span class="stop-name">HOSPITAL</span><span class="dot dot-blue"></span>
+                    </li>
+                    <li onclick="irADestino(-18.4791, -70.3164, 'Paseo 21 de Mayo')">
+                        <span class="stop-name">21 DE MAYO</span><span class="dot dot-orange"></span>
+                    </li>
+                    <li onclick="irADestino(-18.4755, -70.3142, 'Calle Maipú')">
+                        <span class="stop-name">CALLE MAIPÚ</span><span class="dot dot-green"></span>
+                    </li>
                 </ul>
             </div>
 
             <div id="tab-lineas" class="tab-content">
-                <div id="lines-container"><p style="text-align: center; color: #888; font-size: 14px;">Cargando rutas...</p></div>
+                <div id="lines-container">
+                    <p style="text-align: center; color: #888; font-size: 14px;">Cargando rutas...</p>
+                </div>
             </div>
         </div>
     </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="mapa.js"></script>
 </body>

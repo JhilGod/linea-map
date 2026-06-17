@@ -3,6 +3,7 @@ let map, baseLayer, userMarker = null, currentLatLng = null;
 let isDarkMode = false;
 let lineasAgrupadas = {}; 
 let destinoMarcadorTemp = null;
+let temporizadorBusqueda = null;
 
 // --- 1. CONFIGURACIÓN FIREBASE REAL ---
 const firebaseConfig = {
@@ -232,27 +233,21 @@ window.irADestino = function(lat, lng, nombre) {
         .openPopup();
 
     map.flyTo(ubicacion, 16, { animate: true, duration: 1.5 });
-    toggleSidePanel(); // Cierra el menú para ver el mapa entero
+    toggleSidePanel();
 }
 
 // --- 11. BUSCADOR DINÁMICO CON AUTOCOMPLETADO ---
-let temporizadorBusqueda = null;
-
-// Esta función se activa cada vez que el usuario teclea una letra
 window.manejarInputBusqueda = function() {
     const query = document.getElementById('panel-search-input').value.trim();
     const cajaSugerencias = document.getElementById('search-suggestions');
 
-    // Si borra el texto o escribe menos de 3 letras, ocultamos la lista
     if (query.length < 3) {
         cajaSugerencias.classList.remove('active');
         return;
     }
 
-    // Debounce: Reiniciamos el reloj para no colapsar el servidor por cada letra
     clearTimeout(temporizadorBusqueda);
     temporizadorBusqueda = setTimeout(async () => {
-        // Buscamos hasta 10 resultados para que el usuario pueda scrollear
         const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}, Arica, Chile&limit=10`;
 
         try {
@@ -268,21 +263,17 @@ window.manejarInputBusqueda = function() {
         } catch (error) {
             console.error("Error en búsqueda:", error);
         }
-    }, 600); // Espera 600ms después de que el usuario deja de escribir
+    }, 600);
 };
 
-// Dibuja las tarjetas pequeñas dentro de la lista
 function mostrarSugerenciasVisuales(resultados) {
     const cajaSugerencias = document.getElementById('search-suggestions');
     let html = '';
     
     resultados.forEach(res => {
-        // Dividimos el texto para que el título se vea grande y la calle pequeña
         const partesNombre = res.display_name.split(',');
         const tituloPrincipal = partesNombre[0];
         const subtituloCalle = partesNombre.slice(1, 3).join(', ').trim(); 
-
-        // Escapamos comillas simples para no romper el código HTML
         const tituloSeguro = tituloPrincipal.replace(/'/g, "\\'");
 
         html += `
@@ -298,16 +289,12 @@ function mostrarSugerenciasVisuales(resultados) {
     cajaSugerencias.classList.add('active');
 }
 
-// Lo que pasa cuando el usuario elige una opción de la lista
 window.seleccionarSugerencia = function(lat, lng, nombre) {
     document.getElementById('panel-search-input').value = nombre;
-    document.getElementById('search-suggestions').classList.remove('active'); // Oculta la lista
-    
-    // Reutiliza la función para volar al lugar exacto
+    document.getElementById('search-suggestions').classList.remove('active');
     irADestino(lat, lng, nombre);
 };
 
-// Por si el usuario presiona Enter o toca la lupa en lugar de elegir de la lista
 window.forzarBusqueda = function() {
     manejarInputBusqueda();
 };
