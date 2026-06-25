@@ -5,7 +5,7 @@ let lineasAgrupadas = {};
 let destinoMarcadorTemp = null;
 let temporizadorBusqueda = null;
 
-// --- 1. CONFIGURACIÓN FIREBASE REAL ---
+// --- 1. CONFIGURACIÓN FIREBASE ---
 const firebaseConfig = {
     apiKey: "AIzaSyDaourUoy1CgLslN9UxO-9DyTz3IjhRVpI",
     authDomain: "linea-map.firebaseapp.com",
@@ -88,7 +88,7 @@ function initMap() {
     };
 }
 
-// --- 7. DESCARGA DESDE FIREBASE (SOPORTE COLORES INDEPENDIENTES Y FLECHAS CORREGIDAS) ---
+// --- 7. DESCARGA DESDE FIREBASE (COLORES INDEPENDIENTES Y FLECHAS CORREGIDAS) ---
 function descargarRutas() {
     db.collection("lineas").get().then((querySnapshot) => {
         lineasAgrupadas = {}; 
@@ -120,11 +120,10 @@ function descargarRutas() {
                         "geometry": { "type": "LineString", "coordinates": JSON.parse(coordenadasTexto) }
                     };
                     
-                    let flechas = null; // Preparamos la variable vacía
+                    let flechas = null;
 
                     const capa = L.geoJSON(featureData, {
                         style: { color: colorEspecifico, weight: 6, opacity: 0.85 },
-                        // El truco está aquí: detectamos la línea "desnuda" y le pegamos las flechas
                         onEachFeature: function (feature, layer) {
                             flechas = L.polylineDecorator(layer, {
                                 patterns: [
@@ -135,9 +134,9 @@ function descargarRutas() {
                                             pixelSize: 14, 
                                             polygon: true, 
                                             pathOptions: { 
-                                                stroke: true, // Asegura que el borde se dibuje
-                                                color: '#ffffff', // Borde blanco
-                                                fillColor: colorEspecifico, // Relleno azul o carmesí
+                                                stroke: true, 
+                                                color: '#ffffff', 
+                                                fillColor: colorEspecifico, 
                                                 fillOpacity: 1, 
                                                 weight: 2 
                                             }
@@ -160,7 +159,6 @@ function descargarRutas() {
                 }
             };
 
-            // Inyección mediante formato de Documento Único optimizado
             if (datos.ruta_ida) {
                 lineasAgrupadas[nombreBase].ida = crearCapaGeoJSON(datos.ruta_ida, "Ida", cIda);
             }
@@ -168,7 +166,6 @@ function descargarRutas() {
                 lineasAgrupadas[nombreBase].vuelta = crearCapaGeoJSON(datos.ruta_vuelta, "Vuelta", cVuelta);
             }
 
-            // Fallback de compatibilidad
             if (datos.coordenadas) {
                 let esIda = nombreCrudo.toLowerCase().includes("ida");
                 let esVuelta = nombreCrudo.toLowerCase().includes("vuelta");
@@ -243,7 +240,7 @@ function renderizarPanel() {
     document.getElementById('lines-container').innerHTML = html;
 }
 
-// --- 9. INTERRUPTOR DE CAPAS (ENHAZADO CON CONTROL DE FLECHAS) ---
+// --- 9. INTERRUPTOR DE CAPAS Y FLECHAS ---
 window.toggleCapa = function(nombreBase, direccion, isChecked) {
     let ruta = lineasAgrupadas[nombreBase][direccion];
     if (!ruta || !ruta.capa) return;
