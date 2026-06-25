@@ -1,3 +1,4 @@
 # Linea Map
 
-Mi primer repositorio para aprender a usar Git y GitHub
+Proyecto de Etica, app web para ver colectivos
+
