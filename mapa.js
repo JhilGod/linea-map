@@ -171,7 +171,9 @@ function descargarRutas() {
                         style: { color: color, weight: 6, opacity: 0.85 },
                         onEachFeature: function (f, l) { flechas = L.polylineDecorator(l, { patterns: [{ offset: 25, repeat: 80, symbol: L.Symbol.arrowHead({ pixelSize: 14, polygon: true, pathOptions: { stroke: true, color: '#ffffff', fillColor: color, fillOpacity: 1, weight: 2 } }) }] }); }
                     }).bindPopup(`<div style="text-align:center; font-family:'Poppins';"><b>🚕 ${nombreBase} (${dir})</b><br><br>${obtenerTarifaActual(datos.tarifaDia||1000, datos.tarifaNoche||1300)}</div>`);
-                    return { capa: capa, flechas: flechas, color: color };
+                    
+                    // ¡EL CAMBIO!: Agregamos coordsGeoJSON: c para poder usarlo en los cálculos matemáticos después
+                    return { capa: capa, flechas: flechas, color: color, coordsGeoJSON: c }; 
                 } catch (e) { return null; }
             };
 
@@ -293,7 +295,12 @@ function crearMarcadorParadero(datos) {
         marker.setPopupContent(popupContent);
         
         // Efecto cinemático (opcional): centra ligeramente el mapa al abrir el popup
-        map.flyTo([datos.coordenadas.latitude, datos.coordenadas.longitude], 17, { animate: true, duration: 0.8 });
+        // --- EFECTO CINEMÁTICO DE CÁMARA ---
+        // Proyectamos la coordenada a píxeles, le restamos 180px al eje Y (para subir la cámara)
+        // y volvemos a convertirlo a coordenadas. Esto obliga al marcador a bajar en la pantalla.
+        const px = map.project([datos.coordenadas.latitude, datos.coordenadas.longitude], 17);
+        px.y -= 180; 
+        map.flyTo(map.unproject(px, 17), 17, { animate: true, duration: 0.8 });
     });
 }
 
@@ -314,7 +321,7 @@ window.marcarFavoritoDesdePopup = function(idParadero, botonHTML) {
     
     localStorage.setItem('favs', JSON.stringify(favoritos));
     renderizarFavoritosSidebar(); // Actualiza el panel lateral en segundo plano
-};
+}
 
 // --- 7. CONTROL DE RUTAS (CON PERSISTENCIA) ---
 window.alternarCapaEspecifica = function(nombreBase, direccion, encender) {
@@ -327,7 +334,6 @@ window.alternarCapaEspecifica = function(nombreBase, direccion, encender) {
     if (encender) {
         objetoRuta.capa.addTo(map);
         if (objetoRuta.flechas) objetoRuta.flechas.addTo(map);
-        map.fitBounds(objetoRuta.capa.getBounds(), { padding: [40, 40] });
     } else {
         map.removeLayer(objetoRuta.capa);
         if (objetoRuta.flechas) map.removeLayer(objetoRuta.flechas);
@@ -475,6 +481,147 @@ window.seleccionarSugerencia = function(lat, lng, nombre) {
 window.irADestino = function(lat, lng, nombre) {
     const ubicacion = L.latLng(lat, lng);
     if (destinoMarcadorTemp) map.removeLayer(destinoMarcadorTemp);
-    destinoMarcadorTemp = L.marker(ubicacion).addTo(map).bindPopup(`<div style="font-family:'Poppins';">📍 <b>${nombre}</b></div>`).openPopup();
-    map.flyTo(ubicacion, 17, { animate: true, duration: 1.5 });
+    
+    // Creamos el marcador en el mapa
+    destinoMarcadorTemp = L.marker(ubicacion).addTo(map);
+
+    // Verificamos si el usuario tiene el GPS activo
+    if (!currentLatLng) {
+        // Si no hay GPS, le avisamos sutilmente
+        const htmlPopup = `
+            <div style="font-family:'Poppins'; padding: 10px; text-align: center; width: 100%;">
+                <h4 style="margin: 0 0 8px 0; font-size: 14px; color: var(--text-color, #222);">${nombre}</h4>
+                <p style="font-size: 12px; color: #888; margin: 0;">📍 Activa 'Mi Ubicación' (🎯) para sugerirte rutas desde donde estás.</p>
+            </div>
+        `;
+        destinoMarcadorTemp.bindPopup(htmlPopup, { className: 'custom-popup' }).openPopup();
+    } else {
+        // Si el GPS está encendido, calculamos y mostramos las líneas directamente
+        buscarRutasHaciaDestino(lat, lng, nombre);
+    }
+    
+    // --- EFECTO CINEMÁTICO DE CÁMARA (BUSCADOR) ---
+    const px = map.project(ubicacion, 17);
+    px.y -= 180; 
+    map.flyTo(map.unproject(px, 17), 17, { animate: true, duration: 1.5 });
 };
+
+// =================================================================
+// --- 10. MOTOR DE ENRUTAMIENTO (RUTAS CERCA DEL USUARIO) ---
+// =================================================================
+
+// Fórmula de Haversine: Calcula la distancia real en metros entre dos coordenadas
+function calcularDistancia(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; // Radio de la Tierra en metros
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+// Algoritmo que evalúa si una línea pasa cerca del usuario Y del destino en el orden correcto
+function evaluarRutaDireccional(coordsArray, origenLatLng, destinoLatLng, maxMetros = 400) {
+    if (!coordsArray || coordsArray.length === 0) return false;
+    
+    let indexOrigen = -1;
+    let indexDestino = -1;
+    let minDistOrigen = Infinity;
+    let minDistDestino = Infinity;
+
+    // Recorre todos los puntos de la calle dibujada
+    for (let i = 0; i < coordsArray.length; i++) {
+        const coord = coordsArray[i]; // [longitud, latitud]
+        
+        const dOrigen = calcularDistancia(origenLatLng.lat, origenLatLng.lng, coord[1], coord[0]);
+        if (dOrigen < minDistOrigen && dOrigen <= maxMetros) {
+            minDistOrigen = dOrigen;
+            indexOrigen = i;
+        }
+
+        const dDestino = calcularDistancia(destinoLatLng.lat, destinoLatLng.lng, coord[1], coord[0]);
+        if (dDestino < minDistDestino && dDestino <= maxMetros) {
+            minDistDestino = dDestino;
+            indexDestino = i;
+        }
+    }
+
+    // Para que la ruta sirva, debe encontrar ambos puntos, y el origen debe estar ANTES que el destino
+    return (indexOrigen !== -1 && indexDestino !== -1 && indexOrigen <= indexDestino);
+}
+window.buscarRutasHaciaDestino = function(destLat, destLng, nombreDestino) {
+    const destinoLatLng = L.latLng(destLat, destLng);
+    const DISTANCIA_MAX = 400; // Tolerancia de 4 cuadras (400 metros)
+    let hayResultados = false;
+
+    let htmlResultados = `
+        <div style="font-family:'Poppins'; padding: 5px; width: 100%;">
+            <h4 style="margin: 0 0 10px 0; font-size: 13px; color: var(--text-color, #1a5276); border-bottom: 1px solid #eee; padding-bottom: 5px; line-height: 1.4;">
+                🚌 Líneas sugeridas hacia:<br>
+                <span style="color: #444; font-weight: normal; font-size: 12px;">${nombreDestino}</span>
+            </h4>
+            <div style="max-height: 180px; overflow-y: auto; padding-right: 5px;">
+    `;
+
+    // Procesamos todas las líneas de Arica almacenadas en RAM
+    Object.keys(lineasAgrupadas).forEach(nombreLinea => {
+        const info = lineasAgrupadas[nombreLinea];
+
+        ['ida', 'vuelta'].forEach(direccion => {
+            const ruta = info[direccion];
+            if (ruta && ruta.coordsGeoJSON) {
+                // Evaluamos matemáticamente la ruta
+                const sirveRuta = evaluarRutaDireccional(ruta.coordsGeoJSON, currentLatLng, destinoLatLng, DISTANCIA_MAX);
+
+                if (sirveRuta) {
+                    hayResultados = true;
+                    const isChecked = map.hasLayer(ruta.capa) ? 'checked' : '';
+                    htmlResultados += `
+                        <div style="background: var(--bg-card, #fdfdfd); border: 1px solid #eee; border-radius: 8px; padding: 10px; margin-bottom: 8px; display:flex; justify-content:space-between; align-items:center; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                            <div>
+                                <strong style="font-size: 13px; color: var(--text-color, #333);">🚕 ${nombreLinea}</strong><br>
+                                <span style="font-size: 11px; color:#888;">(Ruta de ${direccion})</span>
+                            </div>
+                            <label class="switch" style="transform: scale(0.8); margin:0;">
+                                <input type="checkbox" ${isChecked} onchange="alternarCapaEspecifica('${nombreLinea}', '${direccion}', this.checked)">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    `;
+                }
+            }
+        });
+    });
+
+    if (!hayResultados) {
+        htmlResultados += `
+            <div style="text-align:center; padding: 10px;">
+                <span style="font-size: 24px;">🚶‍♂️</span>
+                <p style="font-size: 12px; color: #888; margin-top: 5px;">Ningún colectivo pasa a menos de 4 cuadras de tu ubicación hacia este destino.</p>
+            </div>`;
+    }
+
+    htmlResultados += `</div></div>`;
+
+    // Asignamos el HTML con las tarjetas directamente a la burbuja del destino
+    if (destinoMarcadorTemp) {
+        destinoMarcadorTemp.bindPopup(htmlResultados, { className: 'custom-popup' }).openPopup();
+    }
+};
+
+// =================================================================
+// --- PWA: REGISTRO DEL SERVICE WORKER ---
+// =================================================================
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+            .then(registration => {
+                console.log('ServiceWorker registrado con éxito con el alcance:', registration.scope);
+            })
+            .catch(error => {
+                console.log('El registro del ServiceWorker falló:', error);
+            });
+    });
+}

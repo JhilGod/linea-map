@@ -1,0 +1,22 @@
+{
+  "name": "Linea Map - Taxis Colectivos",
+  "short_name": "Linea Map",
+  "description": "Directorio interactivo de taxis colectivos en Arica",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f0f2f5",
+  "theme_color": "#107c91",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "Logo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "Logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}
